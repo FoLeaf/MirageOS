@@ -1,6 +1,7 @@
 /* MirageOS 本地服务器：静态文件 + /api/messages 流式代理 + /api/trending 热点抓取
    零依赖，Node 18+。密钥只在本文件读取的 .env 中，绝不下发到前端。
-   开机门禁：所有 /api/* 需带请求头 x-mirage-key（GATE_PASSWORD，默认 ），否则 401。 */
+   开机门禁：设置了 GATE_PASSWORD 时，所有 /api/* 需带请求头 x-mirage-key，否则 401；未设置则不设防。
+   /api/gate 为公开端点，只回报是否上锁（供锁屏探测，不泄密钥）。 */
 "use strict";
 const http = require("http");
 const fs = require("fs");
@@ -132,8 +133,10 @@ async function trending() {
 /* ---- http 服务 ---- */
 const server = http.createServer(async (req, res) => {
   const url = new URL(req.url, "http://local");
-  if (url.pathname.startsWith("/api/")) { // 门禁：没解锁就不给任何数据
-    if (req.headers["x-mirage-key"] !== GATE_PASSWORD)
+  if (url.pathname.startsWith("/api/")) {
+    if (req.method === "GET" && url.pathname === "/api/gate") // 锁屏探测：无需密钥
+      return json(res, 200, { locked: !!GATE_PASSWORD });
+    if (GATE_PASSWORD && req.headers["x-mirage-key"] !== GATE_PASSWORD) // 门禁：没解锁就不给任何数据
       return json(res, 401, { error: "locked: 门禁未通过" });
     if (req.method === "POST" && url.pathname === "/api/messages") return proxyMessages(req, res);
     if (req.method === "GET" && url.pathname === "/api/trending") return json(res, 200, await trending());

@@ -1,8 +1,10 @@
 {
-  "name": "mirageos",
+  "name": "mirageos-server",
   "version": "0.1.0",
   "private": true,
-  "description": "MirageOS - 浏览器里的热点驱动幻觉操作系统",
+  "description": "MirageOS 本地服务器：静态文件 + /api/messages SSE 代理 + /api/trending 热点抓取（零依赖，Node 18+）",
+  "license": "MIT",
+  "main": "server.js",
   "scripts": {
     "start": "node server.js"
   }

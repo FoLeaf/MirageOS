@@ -1,7 +1,13 @@
 {
   "name": "mirageos",
   "private": true,
-  "description": "MirageOS 部署工具（运行时零依赖，wrangler 仅用于部署）",
+  "description": "MirageOS —— 浏览器里的热点驱动幻觉操作系统（本包仅为 Cloudflare Workers 部署工具，运行时零依赖）",
+  "license": "MIT",
+  "author": "FoLeaf",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/FoLeaf/MirageOS.git"
+  },
   "scripts": {
     "dev": "wrangler dev",
     "deploy": "wrangler deploy"

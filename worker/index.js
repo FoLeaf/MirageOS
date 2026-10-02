@@ -1,6 +1,7 @@
 /* MirageOS Cloudflare Worker：静态资源(ASSETS binding) + /api/messages SSE 代理 + /api/trending
    与 server/server.js 行为对等的边缘版本。密钥经 wrangler secret 注入（API_BASE_URL / API_KEY / MODEL），绝不下发前端。
-   开机门禁：所有 /api/* 需带请求头 x-mirage-key（GATE_PASSWORD，默认 ），否则 401。 */
+   开机门禁：设置了 GATE_PASSWORD 时，所有 /api/* 需带请求头 x-mirage-key，否则 401；未设置则不设防。
+   /api/gate 为公开端点，只回报是否上锁（供锁屏探测，不泄密钥）。 */
 "use strict";
 
 const TREND_URL = "https://mshibanami.github.io/GitHubTrendingRSS/daily/all.xml";
@@ -12,9 +13,10 @@ function json(body, code = 200) {
   });
 }
 
-/* ---- 门禁：没解锁就不给任何数据 ---- */
+/* ---- 门禁：设置了 GATE_PASSWORD 才上锁；未设置则放行 ---- */
 function gateOK(request, env) {
-  return request.headers.get("x-mirage-key") === (env.GATE_PASSWORD || "");
+  const pw = String(env.GATE_PASSWORD || "");
+  return !pw || request.headers.get("x-mirage-key") === pw;
 }
 
 /* ---- /api/messages：转发到中转站，SSE 流式透传 ---- */
@@ -96,6 +98,8 @@ export default {
   async fetch(request, env) {
     const url = new URL(request.url);
     if (url.pathname.startsWith("/api/")) {
+      if (request.method === "GET" && url.pathname === "/api/gate") // 锁屏探测：无需密钥
+        return json({ locked: !!String(env.GATE_PASSWORD || "") });
       if (!gateOK(request, env)) return json({ error: "locked: 门禁未通过" }, 401);
       if (request.method === "POST" && url.pathname === "/api/messages") return proxyMessages(request, env);
       if (request.method === "GET" && url.pathname === "/api/trending") return json(await trending());

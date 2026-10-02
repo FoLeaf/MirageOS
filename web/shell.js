@@ -12,8 +12,7 @@
                 store: { items: [], tab: "发现", results: null, resq: "",
                          err: "", serr: "", busy: false, sbusy: false } };
 
-  /* ============ 门禁 ============ */
-  var GATE_PW = "";        // 进入密码；服务端可用 GATE_PASSWORD 环境变量覆盖（需两边一致）
+  /* ============ 门禁（是否上锁由服务端 /api/gate 决定，密码只存服务端） ============ */
   var GATE_KEY = "mirage_gate_v1";
   function gateKey() { try { return sessionStorage.getItem(GATE_KEY) || ""; } catch (e) { return ""; } }
   function gateHeaders() { // 所有 /api/* 请求都带上门禁密钥，服务端校验
@@ -1923,29 +1922,41 @@
 
   function initGate() {
     var lock = $("lock"), inp = $("lockIn");
-    if (gateKey() === GATE_PW) { lock.hidden = true; return; } // 本会话已解锁：免门禁直接开机
+    function open() {
+      lock.classList.add("away");
+      setTimeout(function () { lock.hidden = true; }, 500);
+      bootOnce();
+    }
+    function reject(msg) {
+      $("lockErr").textContent = msg;
+      lock.classList.remove("shake");
+      void lock.offsetWidth; // 重置动画
+      lock.classList.add("shake");
+      inp.value = "";
+      inp.focus();
+    }
+    function askFocus() { setTimeout(function () { inp.focus(); }, 60); }
     function tryUnlock() {
-      if (inp.value === GATE_PW) {
-        try { sessionStorage.setItem(GATE_KEY, GATE_PW); } catch (e) {}
-        lock.classList.add("away");
-        setTimeout(function () { lock.hidden = true; }, 500);
-        bootOnce();
-      } else {
-        $("lockErr").textContent = inp.value ? "密码不对，这台蜃楼不认识你。" : "请输入密码。";
-        lock.classList.remove("shake");
-        void lock.offsetWidth; // 重置动画
-        lock.classList.add("shake");
-        inp.value = "";
-        inp.focus();
-      }
+      var pw = inp.value;
+      if (!pw) return reject("请输入密码。");
+      fetch("/api/config", { headers: { "x-mirage-key": pw } }).then(function (r) { // 拿口令试锁
+        if (!r.ok) throw 0;
+        try { sessionStorage.setItem(GATE_KEY, pw); } catch (e) {}
+        open();
+      }).catch(function () { reject("密码不对，这台蜃楼不认识你。"); });
     }
     $("lockGo").addEventListener("click", tryUnlock);
     inp.addEventListener("keydown", function (e) { if (e.key === "Enter") tryUnlock(); });
-    setTimeout(function () { inp.focus(); }, 60);
+    fetch("/api/gate").then(function (r) { return r.json(); }).then(function (g) {
+      if (!g || !g.locked) { bootOnce(); return; } // 没上锁：锁屏保持隐藏，直接开机
+      var k = gateKey();
+      if (!k) { lock.hidden = false; return askFocus(); }
+      fetch("/api/config", { headers: { "x-mirage-key": k } }).then(function (r) { // 本会话输过：复核一次
+        if (r.ok) bootOnce();
+        else { try { sessionStorage.removeItem(GATE_KEY); } catch (e) {} lock.hidden = false; askFocus(); }
+      }).catch(function () { lock.hidden = false; askFocus(); });
+    }).catch(function () { bootOnce(); }); // 探测失败按未上锁处理，开机流程自会降级
   }
 
   initGate();
-  window.addEventListener("load", function () {
-    if (gateKey() === GATE_PW) bootOnce();
-  });
 })();

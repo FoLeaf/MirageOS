@@ -1,7 +1,13 @@
+# 密钥与本地环境（只有 *.example 模板进仓库）
 .env
 .dev.vars
+
+# 工具与构建
 .wrangler
 node_modules/
+*.log
+
+# 本地杂物
 tmp/
 wibeos/
-*.log
+.claude/
