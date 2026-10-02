@@ -1,22 +1,52 @@
-# MirageOS
+<p align="center">
+  <img src="assets/readme/hero.svg" width="100%"
+       alt="MirageOS：桌面是真的，其余都是梦——AI 依当日 GitHub Trending 现场梦出的浏览器幻觉操作系统">
+</p>
 
-> 桌面是真的，其余都是梦。
-> The desktop is real — everything else is a dream.
+<p align="center">
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="License: MIT"></a>
+  <a href="https://nodejs.org/"><img src="https://img.shields.io/badge/node-18%2B-339933?logo=nodedotjs&logoColor=white" alt="Node 18+"></a>
+  <a href="https://workers.cloudflare.com/"><img src="https://img.shields.io/badge/edge-Cloudflare%20Workers-f6821f" alt="Cloudflare Workers"></a>
+  <a href="https://mirageos.litneq.workers.dev"><img src="https://img.shields.io/badge/%E5%9C%A8%E7%BA%BF%E4%BD%93%E9%AA%8C-mirageos-8b5cf6" alt="在线体验"></a>
+</p>
 
-[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
-[![Node](https://img.shields.io/badge/node-18%2B-339933?logo=nodedotjs&logoColor=white)](https://nodejs.org/)
-[![Cloudflare Workers](https://img.shields.io/badge/edge-Cloudflare%20Workers-f6821f)](https://workers.cloudflare.com/)
-[![在线体验](https://img.shields.io/badge/%E5%9C%A8%E7%BA%BF%E4%BD%93%E9%AA%8C-mirageos-8b5cf6)](https://mirageos.litneq.workers.dev)
+MirageOS 是一个跑在浏览器里的仿 macOS「幻觉操作系统」。每次开机，AI 依当日 **GitHub Trending** 真实趋势信号，梦出一个平行世界：一张专属壁纸与主题、10 个落在桌面上的虚构中文应用、一个地址栏可以无限下钻的假浏览器。点开应用，AI 现场把它画出来——游戏真能玩、工具真能用。跨开机一切重梦，唯一的残像存在「梦境回放」里。
 
-一个跑在浏览器里的仿 macOS「幻觉操作系统」。每次开机，AI 根据当日 **GitHub Trending** 真实趋势信号，梦出一个平行世界：10 个虚构中文应用落在桌面、专属壁纸与主题、一个可以用地址栏无限下钻的假浏览器。软件分两层：**基础软件先就位**——计算器、记事本、时钟常驻 Dock，它们同样由 AI 现场梦出，但规格固定、按真实系统软件的标准制作（记事本的笔记存 localStorage，是全系统唯一跨开机留存的东西）；**然后才是**随当日信号发散的「今日应用」。点开应用，AI 现场把它画出来——游戏真能玩、工具真能用。Dock 上还常驻一个**应用集市 🛍**——全系统唯一外壳不由 AI 绘制的原生应用：App Store 式固定界面（侧栏分类 / 今日主打 / 商品卡片），但货架上每一款商品都由 AI 依今日世界上架，点开才梦出真身。跨开机一切重梦，唯一的残像存在「梦境回放」里。
+## 先看图
 
-**English** — MirageOS is a macOS-flavored *hallucination operating system* that runs entirely in the browser. On every boot, an AI dreams up a parallel world seeded by that day's real GitHub Trending signals: a desktop of fictional apps, a matching wallpaper and theme, and a fake browser whose address bar leads ever deeper down the rabbit hole. Click any app and the AI paints it live, streaming into a sandboxed iframe — games actually play, tools actually work. Nothing survives a reboot except your notes.
+<p align="center">
+  <img src="docs/screenshots/desktop.webp" width="100%"
+       alt="今日桌面：AI 依当日 GitHub Trending 梦出的壁纸、主题与虚构中文应用">
+</p>
+<p align="center"><i>今日桌面——每天都不一样，由当日真实热点决定</i></p>
 
-## 截图
+| 开机锁屏 | 应用集市（原生壳 · AI 上架） |
+|:---:|:---:|
+| ![开机锁屏](docs/screenshots/lock.webp) | ![应用集市](docs/screenshots/appstore.webp) |
 
-| 开机锁屏 | 今日桌面（AI 梦出） | 应用集市（原生壳 · AI 上架） |
-|:---:|:---:|:---:|
-| ![开机锁屏](docs/screenshots/lock.png) | ![今日桌面](docs/screenshots/desktop.png) | ![应用集市](docs/screenshots/appstore.png) |
+## 它如何做梦
+
+<p align="center">
+  <img src="assets/readme/workflow.svg" width="100%"
+       alt="MirageOS 每日循环：热点信号 → 开机成梦 → 现场作画 → 重启归零，次日以新热点重新入梦">
+</p>
+
+软件分三层，常驻与发散各司其职：
+
+| 层 | 内容 | 谁来画 |
+|---|---|---|
+| **基础软件** | 计算器 · 记事本 · 时钟，常驻 Dock（启动台、想象搜索里也有） | AI 现场梦出，但规格固定，按真实系统软件的标准制作 |
+| **今日应用** | 随当日热点发散的 10 个虚构应用 | AI 依今日世界自由发挥 |
+| **应用集市 🛍** | App Store 式商店：侧栏分类 / 今日主打 / 商品卡片 | 全系统唯一不由 AI 绘制的外壳；货架上每款商品由 AI 依今日世界上架，点开才梦出真身 |
+
+记事本的笔记存在 localStorage 里，是全系统唯一跨开机留存的东西。
+
+<details>
+<summary><b>English</b></summary>
+
+MirageOS is a macOS-flavored *hallucination operating system* that runs entirely in the browser. On every boot, an AI dreams up a parallel world seeded by that day's real GitHub Trending signals: a desktop of fictional apps, a matching wallpaper and theme, and a fake browser whose address bar leads ever deeper down the rabbit hole. Click any app and the AI paints it live, streaming into a sandboxed iframe — games actually play, tools actually work. Base apps (calculator, notes, clock) sit in the Dock to fixed, real-system-app specs, and the App Store is the only natively-drawn shell, restocked each day by the AI. Nothing survives a reboot except your notes.
+
+</details>
 
 ## 快速开始
 
@@ -64,17 +94,17 @@ npx wrangler deploy       # 部署 / 更新
 - `wrangler dev` 可本地起 Worker 调试（读取 `.dev.vars`）。
 - 与本地版差异：无 `MIRAGE_DEBUG` 落盘日志（可看 `wrangler tail`）；trending 缓存为各隔离实例内存级。
 
-## 操作
+## 操作指南
 
 - **双击桌面图标**打开应用；右键图标可「重梦」。
-- **基础软件**：计算器 / 记事本 / 时钟常驻 Dock（启动台、想象搜索里也有），随开随梦；规格固定，功能如真。
-- **应用集市 🛍**：原生固定界面（非 AI 绘制）的应用商店。商品由 AI 依今日世界上架（开机后自动备货）；卡片一点即梦出应用真身，「获取」装入 Dock；搜索框回车现场编一批新商品；「换一批」或 Alt+点击 重新上架。
+- **基础软件**：计算器 / 记事本 / 时钟常驻 Dock，随开随梦；规格固定，功能如真。
+- **应用集市 🛍**：商品由 AI 依今日世界上架（开机后自动备货）；卡片一点即梦出应用真身，「获取」装入 Dock；搜索框回车现场编一批新商品；「换一批」或 Alt+点击 重新上架。
 - **Alt+点击 Dock 图标**强制重梦该应用（集市 = 重新上架）。
 - **潮眼/浏览器**：地址栏输任何假网址，回车，看 AI 把下一个站画出来。
 - **想象搜索 Ctrl+K**：输入任何东西，现场梦见一个应用。
 - **F4** 启动台 · **Ctrl+↑** 调度中心 · **菜单栏 🎞** 梦境回放（历史开机的桌面残像）。
 
-## 结构
+## 仓库结构
 
 ```
 server/server.js   # 本地静态服务 + /api/messages SSE 流式代理 + /api/trending（GitHub Trending RSS）
@@ -88,11 +118,9 @@ docs/research/     # 竞品与热榜源调研
 
 更多设计取舍——为什么「延迟即仪式」、反思考提示词的对照实验、原生 / 基础 / 今日三层软件体系——见 [docs/PLAN.md](docs/PLAN.md)。
 
-## 许可
+## 许可 · 致谢
 
 [MIT](LICENSE)。外壳底座移植自 [wibeos](https://github.com/hansstam86/wibeos)（MIT）。
-
-## 致谢
 
 - [wibeos](https://github.com/hansstam86/wibeos)（MIT）——外壳、补丁协议、死控件检测的底座。
 - [vibeOS](https://vibeos.sh)（Steve Sanderson）——「幻觉 OS」概念的先行演示。

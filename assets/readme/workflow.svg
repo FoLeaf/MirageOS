@@ -1,0 +1,102 @@
+<svg xmlns="http://www.w3.org/2000/svg"
+     width="1200" height="410" viewBox="0 0 1200 410"
+     role="img" aria-labelledby="flow-title flow-desc">
+  <title id="flow-title">MirageOS 每日循环</title>
+  <desc id="flow-desc">MirageOS 的开机循环：开机时抓取当日 GitHub Trending 热点作为种子，AI 流式梦出壁纸、主题与 10 个今日应用；点开应用时 AI 现场作画，能玩能用；重启后一切清空重梦，只有记事本笔记留存，次日以新热点重新入梦。</desc>
+
+  <defs>
+    <radialGradient id="flowGlow" cx="50%" cy="0%" r="70%">
+      <stop offset="0%" stop-color="#8B5CF6" stop-opacity="0.08"/>
+      <stop offset="100%" stop-color="#8B5CF6" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+
+  <rect width="1200" height="410" rx="24" fill="#0B0E1F"/>
+  <rect width="1200" height="410" rx="24" fill="url(#flowGlow)"/>
+
+  <g font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', sans-serif">
+
+    <!-- 卡片 1：热点信号 -->
+    <g>
+      <rect x="72" y="64" width="240" height="236" rx="16" fill="#121734" stroke="#262E5C" stroke-width="1.5"/>
+      <text x="96" y="106" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace"
+            font-size="15" fill="#8B5CF6">01</text>
+      <g transform="translate(262 82)" stroke="#38BDF8" stroke-width="2.4" stroke-linecap="round">
+        <path d="M0,24 v-7 M8,24 v-13 M16,24 v-19"/>
+        <circle cx="22" cy="1" r="2.6" fill="#8B5CF6" stroke="none"/>
+      </g>
+      <text x="96" y="148" font-size="21" font-weight="700" fill="#EAF0FF">热点信号</text>
+      <g font-size="18" fill="#8A93B8">
+        <text x="96" y="184">开机瞬间，抓取当日</text>
+        <text x="96" y="210">GitHub Trending 热榜，</text>
+        <text x="96" y="236">作为梦的种子。</text>
+      </g>
+    </g>
+
+    <!-- 卡片 2：开机成梦 -->
+    <g>
+      <rect x="344" y="64" width="240" height="236" rx="16" fill="#121734" stroke="#262E5C" stroke-width="1.5"/>
+      <text x="368" y="106" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace"
+            font-size="15" fill="#8B5CF6">02</text>
+      <path transform="translate(524 84)" d="M12,0 l3,9 9,3 -9,3 -3,9 -3,-9 -9,-3 9,-3 z" fill="#8B5CF6"/>
+      <text x="368" y="148" font-size="21" font-weight="700" fill="#EAF0FF">开机成梦</text>
+      <g font-size="18" fill="#8A93B8">
+        <text x="368" y="184">AI 流式梦出整个世界：</text>
+        <text x="368" y="210">壁纸、主题、10 个虚构</text>
+        <text x="368" y="236">中文应用落上桌面。</text>
+      </g>
+    </g>
+
+    <!-- 卡片 3：现场作画 -->
+    <g>
+      <rect x="616" y="64" width="240" height="236" rx="16" fill="#121734" stroke="#262E5C" stroke-width="1.5"/>
+      <text x="640" y="106" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace"
+            font-size="15" fill="#8B5CF6">03</text>
+      <path transform="translate(798 84) scale(1.35)" d="M2,2 v17 l4.5,-3.8 3,6.3 3.2,-1.6 -3,-6.2 h5.3 z"
+            fill="#38BDF8"/>
+      <text x="640" y="148" font-size="21" font-weight="700" fill="#EAF0FF">现场作画</text>
+      <g font-size="18" fill="#8A93B8">
+        <text x="640" y="184">点开任意应用，AI</text>
+        <text x="640" y="210">当场把它画出来——</text>
+        <text x="640" y="236">游戏能玩，工具能用。</text>
+      </g>
+    </g>
+
+    <!-- 卡片 4：重启归零 -->
+    <g>
+      <rect x="888" y="64" width="240" height="236" rx="16" fill="#121734" stroke="#262E5C" stroke-width="1.5"/>
+      <text x="912" y="106" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace"
+            font-size="15" fill="#8B5CF6">04</text>
+      <g transform="translate(1070 86)" fill="none" stroke="#38BDF8" stroke-width="2.4" stroke-linecap="round">
+        <path d="M20,12 a8,8 0 1 1 -8,-8"/>
+        <path d="M8,1.2 l4.4,2.8 -4.4,2.8"/>
+        <rect x="9" y="8" width="7" height="5.5" rx="1.2" stroke="#8B5CF6" stroke-width="1.6"/>
+      </g>
+      <text x="912" y="148" font-size="21" font-weight="700" fill="#EAF0FF">重启归零</text>
+      <g font-size="18" fill="#8A93B8">
+        <text x="912" y="184">跨开机一切清空重梦，</text>
+        <text x="912" y="210">唯一留存的残像：</text>
+        <text x="912" y="236">记事本里的笔记。</text>
+      </g>
+    </g>
+
+    <!-- 卡间箭头 -->
+    <g stroke="#38BDF8" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M316,182 h22"/>
+      <path d="M332,175 l8,7 -8,7"/>
+      <path d="M588,182 h22"/>
+      <path d="M604,175 l8,7 -8,7"/>
+      <path d="M860,182 h22"/>
+      <path d="M876,175 l8,7 -8,7"/>
+    </g>
+
+    <!-- 次日回流 -->
+    <path d="M1008,300 v44 h-816 v-38" fill="none" stroke="#8B5CF6" stroke-width="2"
+          stroke-dasharray="6 6" opacity="0.85"/>
+    <path d="M186,318 l6,10 6,-10" fill="none" stroke="#8B5CF6" stroke-width="2"
+          stroke-linecap="round" stroke-linejoin="round" opacity="0.85"/>
+    <text x="600" y="332" text-anchor="middle"
+          font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace"
+          font-size="15" fill="#8A93B8">次日 · 新的热点，重新入梦</text>
+  </g>
+</svg>
