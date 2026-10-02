@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MirageOS</title>
+<link rel="stylesheet" href="/shell.css">
+</head>
+<body>
+  <div id="desktop"></div>
+  <div id="dwidget"><div id="dwTime"></div><div id="dwDate"></div></div>
+  <div id="dicons"></div>
+
+  <div id="mctrl">
+    <div id="mcTitle">调度中心</div>
+    <div id="mcGrid"></div>
+  </div>
+
+  <div id="menubar">
+    <div class="mitem" data-menu="apple" id="appleBtn">🏜</div>
+    <div class="mitem bold" data-menu="app" id="mAppName">访达</div>
+    <div class="mitem" data-menu="File">文件</div>
+    <div class="mitem" data-menu="Edit">编辑</div>
+    <div class="mitem" data-menu="View">显示</div>
+    <div class="mitem" data-menu="Window">窗口</div>
+    <div class="mitem" data-menu="Help">帮助</div>
+    <div id="mright">
+      <span id="sigchip" title="今日桌面由趋势信号生成">📡 —</span>
+      <span id="dreambtn" style="cursor:pointer" title="梦境回放">🎞</span>
+      <span id="spotbtn" style="cursor:pointer" title="想象搜索">🔍</span>
+      <span>📶</span><span>🔋</span><span id="clock"></span>
+    </div>
+  </div>
+  <div id="dropdown" hidden></div>
+
+  <div id="toasts"></div>
+
+  <div id="spot" hidden>
+    <div id="spotbox">
+      <input id="spotin" placeholder="MirageOS 想象搜索 — 应用，或任何你梦得到的东西">
+      <div id="spotres"></div>
+    </div>
+  </div>
+
+  <div id="launchpad" hidden>
+    <input id="lpsearch" placeholder="搜索">
+    <div id="lpgrid"></div>
+  </div>
+
+  <div id="windows"></div>
+
+  <div id="dockwrap"><div id="dock"></div></div>
+
+  <div class="sysdlg" id="aboutDlg" hidden>
+    <div class="dlgbox">
+      <div style="font-size:48px">🏜</div>
+      <h2>关于这台蜃楼</h2>
+      <p><b>MirageOS 1.0</b>（海市蜃楼）<br>
+         芯片&nbsp;&nbsp;幻想 M∞<br>
+         内存&nbsp;&nbsp;大部分是梦<br>
+         应用&nbsp;&nbsp;0 个真的，∞ 个可能</p>
+      <p id="aboutWorld" style="border-top:1px solid #ddd;padding-top:10px"></p>
+      <button id="aboutOk">好</button>
+    </div>
+  </div>
+
+  <div class="sysdlg" id="settingsDlg" hidden>
+    <div class="dlgbox">
+      <h2 style="text-align:center">⚙️ 系统设置</h2>
+      <div class="srow">
+        <div class="slab"><b>重新入梦</b><span>丢弃本会话，重新开机捕获今日信号</span></div>
+        <button id="setRedream">重启 MirageOS</button>
+      </div>
+      <div class="srow">
+        <div class="slab"><b>应用缓存</b><span>忘记本会话已梦出的应用（下次打开重梦）</span></div>
+        <button class="danger" id="setClearApps">全部遗忘</button>
+      </div>
+      <div class="srow">
+        <div class="slab"><b>模型</b><span id="setModel">…</span></div>
+      </div>
+      <div class="srow">
+        <div class="slab"><b>梦境回放</b><span>查看历史开机的桌面快照</span></div>
+        <button class="alt" id="setDreams">打开</button>
+      </div>
+      <div style="text-align:center;margin-top:16px">
+        <button class="alt" id="setClose">完成</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="sysdlg" id="dreamDlg" hidden>
+    <div class="dlgbox">
+      <h2>🎞 梦境回放</h2>
+      <p>每次开机都是一场新梦，醒来即忘——这里是仅存的残像。</p>
+      <div id="dreamGrid"></div>
+      <div id="dreamEmpty" hidden>还没有做过梦。重启一次 MirageOS，就会有第一场。</div>
+      <button class="alt" id="dreamClear">清空所有梦</button>
+      <button id="dreamClose">回到此刻</button>
+    </div>
+  </div>
+
+  <div id="sleepveil" hidden></div>
+
+  <div id="boot">
+    <div id="blogo">🏜</div>
+    <div id="bbar"><div id="bfill"></div></div>
+    <div id="btag">MirageOS — 桌面是真的，其余都是梦</div>
+    <div id="bsigs" hidden></div>
+  </div>
+
+<script src="/shell.js"></script>
+</body>
+</html>

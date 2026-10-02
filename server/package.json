@@ -1,0 +1,9 @@
+{
+  "name": "mirageos",
+  "version": "0.1.0",
+  "private": true,
+  "description": "MirageOS - 浏览器里的热点驱动幻觉操作系统",
+  "scripts": {
+    "start": "node server.js"
+  }
+}
