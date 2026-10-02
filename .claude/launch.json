@@ -2,10 +2,11 @@
   "version": "0.0.1",
   "configurations": [
     {
-      "name": "mirageos",
+      "name": "mirageos-preview",
       "runtimeExecutable": "node",
-      "runtimeArgs": ["server/server.js"],
-      "port": 8787
+      "runtimeArgs": ["-e", "require('D:/Study/AgenticOS/server/server.js')"],
+      "autoPort": true,
+      "port": 8790
     }
   ]
 }

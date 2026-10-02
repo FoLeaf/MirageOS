@@ -1,5 +1,6 @@
 /* MirageOS 本地服务器：静态文件 + /api/messages 流式代理 + /api/trending 热点抓取
-   零依赖，Node 18+。密钥只在本文件读取的 .env 中，绝不下发到前端。 */
+   零依赖，Node 18+。密钥只在本文件读取的 .env 中，绝不下发到前端。
+   开机门禁：所有 /api/* 需带请求头 x-mirage-key（GATE_PASSWORD，默认 ），否则 401。 */
 "use strict";
 const http = require("http");
 const fs = require("fs");
@@ -19,6 +20,7 @@ const API_BASE = (process.env.API_BASE_URL || "").replace(/\/+$/, "");
 const API_KEY = process.env.API_KEY || "";
 const MODEL = process.env.MODEL || "claude-opus-5-5";
 const EFFORT = process.env.MODEL_REASONING_EFFORT || "";
+const GATE_PASSWORD = process.env.GATE_PASSWORD || "";
 const PORT = +process.env.PORT || 8787;
 const HOST = process.env.HOST || "127.0.0.1";
 const ROOT = path.join(__dirname, "..", "web");
@@ -130,10 +132,15 @@ async function trending() {
 /* ---- http 服务 ---- */
 const server = http.createServer(async (req, res) => {
   const url = new URL(req.url, "http://local");
-  if (req.method === "POST" && url.pathname === "/api/messages") return proxyMessages(req, res);
-  if (req.method === "GET" && url.pathname === "/api/trending") return json(res, 200, await trending());
-  if (req.method === "GET" && url.pathname === "/api/config")
-    return json(res, 200, { model: MODEL, effort: EFFORT || null, relay: API_BASE.replace(/^https?:\/\//, "").split("/")[0] });
+  if (url.pathname.startsWith("/api/")) { // 门禁：没解锁就不给任何数据
+    if (req.headers["x-mirage-key"] !== GATE_PASSWORD)
+      return json(res, 401, { error: "locked: 门禁未通过" });
+    if (req.method === "POST" && url.pathname === "/api/messages") return proxyMessages(req, res);
+    if (req.method === "GET" && url.pathname === "/api/trending") return json(res, 200, await trending());
+    if (req.method === "GET" && url.pathname === "/api/config")
+      return json(res, 200, { model: MODEL, effort: EFFORT || null, relay: API_BASE.replace(/^https?:\/\//, "").split("/")[0] });
+    return json(res, 404, { error: "not found" });
+  }
   if (req.method === "GET") {
     let p = url.pathname === "/" ? "/index.html" : decodeURIComponent(url.pathname);
     p = path.normalize(p).replace(/^([/\\]+|[.][.][/\\])+/, "");

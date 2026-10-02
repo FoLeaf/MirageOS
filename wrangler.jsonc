@@ -1,0 +1,18 @@
+// Cloudflare Workers 部署配置：静态资源(web/) + API Worker(worker/index.js)
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "mirageos",
+  "main": "worker/index.js",
+  "compatibility_date": "2026-09-24",
+  "vars": {
+    // 2026-10-02 实测：effort=low 使开机首图标 ~81s→~66s、应用首字 ~255s→~213s，无思考爆炸复发
+    "MODEL_REASONING_EFFORT": "low"
+  },
+  "assets": {
+    "directory": "./web",
+    "binding": "ASSETS"
+  },
+  "observability": {
+    "enabled": true
+  }
+}

@@ -3,7 +3,13 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>MirageOS</title>
+<title>MirageOS — 桌面是真的，其余都是梦</title>
+<meta name="description" content="一个跑在浏览器里的仿 macOS 幻觉操作系统：每次开机由当日真实趋势信号梦出一个平行世界。">
+<meta name="theme-color" content="#101014">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' rx='5.5' fill='%23151519'/%3E%3Ccircle cx='12' cy='9.3' r='3.4' fill='none' stroke='%23e8a44b' stroke-width='1.8'/%3E%3Cpath d='M2.8 19.6c3-3.3 6-3.3 9.2-.3 3.2-3 6.2-3 9.2.3' fill='none' stroke='%23e8a44b' stroke-width='1.8' stroke-linecap='round'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap">
 <link rel="stylesheet" href="/shell.css">
 </head>
 <body>
@@ -17,7 +23,9 @@
   </div>
 
   <div id="menubar">
-    <div class="mitem" data-menu="apple" id="appleBtn">🏜</div>
+    <div class="mitem" data-menu="apple" id="appleBtn" title="MirageOS">
+      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="9.4" r="3.4"/><path d="M2.8 19.6c3-3.3 6-3.3 9.2-.3 3.2-3 6.2-3 9.2.3"/></svg>
+    </div>
     <div class="mitem bold" data-menu="app" id="mAppName">访达</div>
     <div class="mitem" data-menu="File">文件</div>
     <div class="mitem" data-menu="Edit">编辑</div>
@@ -25,10 +33,20 @@
     <div class="mitem" data-menu="Window">窗口</div>
     <div class="mitem" data-menu="Help">帮助</div>
     <div id="mright">
-      <span id="sigchip" title="今日桌面由趋势信号生成">📡 —</span>
-      <span id="dreambtn" style="cursor:pointer" title="梦境回放">🎞</span>
-      <span id="spotbtn" style="cursor:pointer" title="想象搜索">🔍</span>
-      <span>📶</span><span>🔋</span><span id="clock"></span>
+      <span id="sigchip" title="今日桌面由趋势信号生成"></span>
+      <span class="mico" id="dreambtn" title="梦境回放">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 14.5A8.5 8.5 0 1 1 9.5 4a7 7 0 0 0 10.5 10.5z"/></svg>
+      </span>
+      <span class="mico" id="spotbtn" title="想象搜索 · Ctrl K">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.8-4.8"/></svg>
+      </span>
+      <span class="mico-static" aria-hidden="true">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" aria-hidden="true"><path d="M2.5 9.2a14.8 14.8 0 0 1 19 0"/><path d="M5.6 12.6a10.4 10.4 0 0 1 12.8 0"/><path d="M8.7 15.9a6 6 0 0 1 6.6 0"/><circle cx="12" cy="19.3" r="1.2" fill="currentColor" stroke="none"/></svg>
+      </span>
+      <span class="mico-static" aria-hidden="true">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" aria-hidden="true"><rect x="2.5" y="8" width="16.5" height="8" rx="2.4"/><path d="M21.8 10.8v2.4"/><rect x="4.8" y="10" width="8" height="4" rx="1" fill="currentColor" stroke="none"/></svg>
+      </span>
+      <span id="clock"></span>
     </div>
   </div>
   <div id="dropdown" hidden></div>
@@ -37,13 +55,16 @@
 
   <div id="spot" hidden>
     <div id="spotbox">
-      <input id="spotin" placeholder="MirageOS 想象搜索 — 应用，或任何你梦得到的东西">
+      <span class="sp-ico" aria-hidden="true">
+        <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.8-4.8"/></svg>
+      </span>
+      <input id="spotin" placeholder="想象搜索 — 应用，或任何你梦得到的东西" autocomplete="off" spellcheck="false">
       <div id="spotres"></div>
     </div>
   </div>
 
   <div id="launchpad" hidden>
-    <input id="lpsearch" placeholder="搜索">
+    <input id="lpsearch" placeholder="搜索" autocomplete="off" spellcheck="false">
     <div id="lpgrid"></div>
   </div>
 
@@ -53,20 +74,22 @@
 
   <div class="sysdlg" id="aboutDlg" hidden>
     <div class="dlgbox">
-      <div style="font-size:48px">🏜</div>
+      <svg class="dlg-mark" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#9a7434" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="9.4" r="3.4"/><path d="M2.8 19.6c3-3.3 6-3.3 9.2-.3 3.2-3 6.2-3 9.2.3"/></svg>
       <h2>关于这台蜃楼</h2>
-      <p><b>MirageOS 1.0</b>（海市蜃楼）<br>
-         芯片&nbsp;&nbsp;幻想 M∞<br>
-         内存&nbsp;&nbsp;大部分是梦<br>
-         应用&nbsp;&nbsp;0 个真的，∞ 个可能</p>
-      <p id="aboutWorld" style="border-top:1px solid #ddd;padding-top:10px"></p>
+      <dl class="spec">
+        <dt>系统</dt><dd><b>MirageOS 1.0</b>（海市蜃楼）</dd>
+        <dt>芯片</dt><dd>幻想 M∞</dd>
+        <dt>内存</dt><dd>大部分是梦</dd>
+        <dt>应用</dt><dd>0 个真的，∞ 个可能</dd>
+      </dl>
+      <p id="aboutWorld"></p>
       <button id="aboutOk">好</button>
     </div>
   </div>
 
   <div class="sysdlg" id="settingsDlg" hidden>
     <div class="dlgbox">
-      <h2 style="text-align:center">⚙️ 系统设置</h2>
+      <h2>系统设置</h2>
       <div class="srow">
         <div class="slab"><b>重新入梦</b><span>丢弃本会话，重新开机捕获今日信号</span></div>
         <button id="setRedream">重启 MirageOS</button>
@@ -82,7 +105,7 @@
         <div class="slab"><b>梦境回放</b><span>查看历史开机的桌面快照</span></div>
         <button class="alt" id="setDreams">打开</button>
       </div>
-      <div style="text-align:center;margin-top:16px">
+      <div class="dlg-foot">
         <button class="alt" id="setClose">完成</button>
       </div>
     </div>
@@ -90,23 +113,43 @@
 
   <div class="sysdlg" id="dreamDlg" hidden>
     <div class="dlgbox">
-      <h2>🎞 梦境回放</h2>
-      <p>每次开机都是一场新梦，醒来即忘——这里是仅存的残像。</p>
+      <h2>梦境回放</h2>
+      <p class="dlg-sub">每次开机都是一场新梦，醒来即忘——这里是仅存的残像。</p>
       <div id="dreamGrid"></div>
       <div id="dreamEmpty" hidden>还没有做过梦。重启一次 MirageOS，就会有第一场。</div>
-      <button class="alt" id="dreamClear">清空所有梦</button>
-      <button id="dreamClose">回到此刻</button>
+      <div class="dlg-foot">
+        <button class="alt" id="dreamClear">清空所有梦</button>
+        <button id="dreamClose">回到此刻</button>
+      </div>
     </div>
   </div>
 
   <div id="sleepveil" hidden></div>
 
   <div id="boot">
-    <div id="blogo">🏜</div>
+    <div id="blogo">
+      <svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="#e6a34d" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="9.4" r="3.4"/><path d="M2.8 19.6c3-3.3 6-3.3 9.2-.3 3.2-3 6.2-3 9.2.3"/></svg>
+      <span class="bword">MIRAGE<b>OS</b></span>
+    </div>
     <div id="bbar"><div id="bfill"></div></div>
     <div id="btag">MirageOS — 桌面是真的，其余都是梦</div>
     <div id="bsigs" hidden></div>
   </div>
+
+  <div id="lock">
+    <div id="lockbox">
+      <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="#e6a34d" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="9.4" r="3.4"/><path d="M2.8 19.6c3-3.3 6-3.3 9.2-.3 3.2-3 6.2-3 9.2.3"/></svg>
+      <div class="lockword">MIRAGE<b>OS</b></div>
+      <div class="locksub">这台蜃楼上了锁 — 输入密码进入</div>
+      <div id="lockrow">
+        <input id="lockIn" type="password" placeholder="输入密码" autocomplete="off" autocapitalize="off" spellcheck="false" autofocus>
+        <button id="lockGo" title="进入">→</button>
+      </div>
+      <div id="lockErr"></div>
+    </div>
+  </div>
+
+  <div id="grain" aria-hidden="true"></div>
 
 <script src="/shell.js"></script>
 </body>

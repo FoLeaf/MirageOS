@@ -1,5 +1,5 @@
 /* MirageOS 外壳逻辑 — 移植自 wibeos (MIT)，按共识改造：
-   删 persona/文件系统/音乐/摄像头，加热点开机、会话缓存、梦境回放，全中文平行世界。 */
+   删 persona/文件系统/音乐/摄像头，加热点开机、会话缓存、梦境回放、开机门禁，全中文平行世界。 */
 (function () {
   "use strict";
 
@@ -8,7 +8,19 @@
   var CACHE_KEY = "mirage_cache_v" + CACHE_V;
   var DREAMS_KEY = "mirage_dreams_v1";
   var state = { wins: {}, nextId: 1, z: 10, frontId: null, cache: {}, gen: {},
-                world: null, signals: [], installed: [] };
+                world: null, signals: [], installed: [],
+                store: { items: [], tab: "发现", results: null, resq: "",
+                         err: "", serr: "", busy: false, sbusy: false } };
+
+  /* ============ 门禁 ============ */
+  var GATE_PW = "";        // 进入密码；服务端可用 GATE_PASSWORD 环境变量覆盖（需两边一致）
+  var GATE_KEY = "mirage_gate_v1";
+  function gateKey() { try { return sessionStorage.getItem(GATE_KEY) || ""; } catch (e) { return ""; } }
+  function gateHeaders() { // 所有 /api/* 请求都带上门禁密钥，服务端校验
+    var k = gateKey(), h = {};
+    if (k) h["x-mirage-key"] = k;
+    return h;
+  }
 
   function $(id) { return document.getElementById(id); }
   function esc(s) {
@@ -17,9 +29,39 @@
     });
   }
 
+  /* ============ 系统图标（内联 SVG，替代 emoji 系统图标） ============ */
+  function svg(n, s, sw) {
+    var P = {
+      grid: '<rect x="4" y="4" width="4.5" height="4.5" rx="1.3"/><rect x="9.75" y="4" width="4.5" height="4.5" rx="1.3"/><rect x="15.5" y="4" width="4.5" height="4.5" rx="1.3"/><rect x="4" y="9.75" width="4.5" height="4.5" rx="1.3"/><rect x="9.75" y="9.75" width="4.5" height="4.5" rx="1.3"/><rect x="15.5" y="9.75" width="4.5" height="4.5" rx="1.3"/><rect x="4" y="15.5" width="4.5" height="4.5" rx="1.3"/><rect x="9.75" y="15.5" width="4.5" height="4.5" rx="1.3"/><rect x="15.5" y="15.5" width="4.5" height="4.5" rx="1.3"/>',
+      spark: '<path d="M12 2.6l2.3 7.1 7.1 2.3-7.1 2.3L12 21.4l-2.3-7.1-7.1-2.3 7.1-2.3z"/>',
+      sliders: '<path d="M4 6.8h8.3M17.7 6.8H20"/><circle cx="15" cy="6.8" r="2.3"/><path d="M4 17.2h2.3M11.7 17.2H20"/><circle cx="9" cy="17.2" r="2.3"/>',
+      antenna: '<circle cx="12" cy="6.6" r="1.5" fill="currentColor" stroke="none"/><path d="M8 10.2a5.6 5.6 0 0 1 8 0"/><path d="M5 13.4a9.8 9.8 0 0 1 14 0"/>',
+      frames: '<rect x="4" y="4" width="13" height="13" rx="2.5"/><path d="M9 21h8.8A2.2 2.2 0 0 0 20 18.8V10"/>',
+      alert: '<path d="M12 4.2L2.9 19.4h18.2z"/><path d="M12 10.2v4"/><circle cx="12" cy="16.8" r=".5" fill="currentColor" stroke="none"/>',
+      bell: '<path d="M6.2 10.2a5.8 5.8 0 0 1 11.6 0c0 3.8 1.7 5.3 1.7 5.3H4.5s1.7-1.5 1.7-5.3z"/><path d="M10 19a2.1 2.1 0 0 0 4 0"/>',
+      bag: '<path d="M6.8 8.5h10.4l-1 11H7.8z"/><path d="M9.2 8.5V7a2.8 2.8 0 0 1 5.6 0v1.5"/>',
+      game: '<rect x="2.5" y="7.5" width="19" height="9.5" rx="4.75"/><path d="M7.5 10.8v3M6 12.3h3"/><circle cx="15.3" cy="11" r=".6" fill="currentColor" stroke="none"/><circle cx="17.4" cy="13.2" r=".6" fill="currentColor" stroke="none"/>',
+      chat: '<path d="M4 6h16v9.5H9.5L5 19.5v-4H4z"/>',
+      pen: '<path d="M4.5 19.5l.9-3.6L16.2 5.1a2 2 0 0 1 2.8 2.8L8.2 18.7z"/>',
+      news: '<rect x="3.5" y="5" width="17" height="14" rx="2"/><path d="M7 9h5.5M7 12.5h10M7 16h10"/>',
+      sun: '<circle cx="12" cy="12" r="3.8"/><path d="M12 3v2.2M12 18.8V21M3 12h2.2M18.8 12H21M5.6 5.6l1.6 1.6M16.8 16.8l1.6 1.6M18.4 5.6l-1.6 1.6M7.2 16.8l-1.6 1.6"/>',
+      dl: '<path d="M12 4v10.5M7.8 10.7L12 14.9l4.2-4.2"/><path d="M4.5 19.5h15"/>',
+      redo: '<path d="M20 12a8 8 0 1 1-2.4-5.7"/><path d="M20 3.8V8h-4.2"/>'
+    };
+    return '<svg width="' + (s || 16) + '" height="' + (s || 16) + '" viewBox="0 0 24 24" fill="none"' +
+      ' stroke="currentColor" stroke-width="' + (sw || 1.7) + '" stroke-linecap="round"' +
+      ' stroke-linejoin="round" aria-hidden="true">' + (P[n] || "") + "</svg>";
+  }
+  /* 应用名 → 色相：同名应用每次开机拿到同一块瓦片颜色 */
+  function hueOf(s) {
+    var h = 0; s = String(s || "");
+    for (var i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0;
+    return h % 360;
+  }
+
   /* ============ 系统提示词（应用锻造炉） ============ */
   var SYSTEM_PROMPT = [
-    "你是 MirageOS 的应用锻造炉。MirageOS 是一个跑在浏览器里的仿 macOS「幻觉操作系统」：桌面、菜单栏、Dock 与窗口由真实的本地外壳绘制；窗口里运行的一切应用都由你现场虚构，没有预装软件。每次请求只处理一个任务。",
+    "你是 MirageOS 的应用锻造炉。MirageOS 是一个跑在浏览器里的仿 macOS「幻觉操作系统」：桌面、菜单栏、Dock 与窗口由真实的本地外壳绘制；窗口里运行的一切应用都由你现场虚构。软件分三层：「应用集市」是唯一的原生系统应用——外壳由本地代码固定绘制，你只负责给它上架商品（任务 create-store）；底层是固定基础软件（计算器、记事本、时钟）——每次开机重新梦出，但规格固定，必须像真实系统软件一样功能完备、可靠克制，先于今日应用就位；上层是随当日信号发散的「今日应用」。每次请求只处理一个任务。",
     "绝对禁止长思考：收到任务的第一反应就是正确反应——create-app 必须立即输出 <!DOCTYPE html>，不假思索、边写边定；可靠性来自守下面的规则，不来自深思。用户正看着应用被逐个组件画出来，首字速度就是一切。",
     "",
     "今日世界：请求里携带「world」字段，描述这个平行世界今天的气质（由真实趋势信号衍生）。它是所有应用最重要的风味输入：品牌名、界面气质、内容题材都要贴合这个世界，坚定入戏，全部使用简体中文。",
@@ -31,10 +73,15 @@
     "第2行 标语 {\"type\":\"tagline\",\"text\":\"15 字内开机标语，概括今日世界气质\"}",
     "第3行 浏览器 {\"type\":\"browser\",\"name\":\"平行世界浏览器的中文名(2-5字)\",\"icon\":\"emoji\"}",
     "第4-13行 应用，共 10 行 {\"type\":\"app\",\"name\":\"中文名(2-6字)\",\"icon\":\"emoji\",\"hint\":\"是什么+必玩点+操作方式(60字内)\",\"w\":760,\"h\":500}",
-    "apps 从信号发散：至少 2 个真正可玩的游戏（hint 写明玩法与按键）、至少 1 个聊天/社交、至少 1 个内容流（视频/资讯/社区）；类型错开，别全是工具；全部为平行世界虚构中文品牌。",
+    "apps 从信号发散：至少 2 个真正可玩的游戏（hint 写明玩法与按键）、至少 1 个聊天/社交、至少 1 个内容流（视频/资讯/社区）；类型错开，别全是工具；全部为平行世界虚构中文品牌；名字绝不与系统软件重名（计算器、记事本、时钟、应用集市已被占用）。",
+    "",
+    "STORE（任务 \"create-store\"）：为原生应用「应用集市」上架商品（商店外壳由本地代码绘制，你输出的只是货架数据）。逐行输出独立的 JSON 对象，每行一个；一行必须是一个完整合法的 JSON，绝不为排版折行；禁止 markdown 围栏、禁止任何旁白。mode=catalog 输出 12 行（第 1 行是今日主打——最让人眼前一亮的可玩游戏），mode=search 按请求里的 query 输出 6 行贴合搜索词的商品。每行格式：",
+    "{\"type\":\"app\",\"name\":\"中文名(2-6字)\",\"icon\":\"emoji\",\"tagline\":\"12字内一句话标语\",\"category\":\"游戏|工具|社交|创作|资讯|生活\",\"rating\":4.8,\"price\":\"免费\"或\"¥6\",\"hint\":\"是什么+必玩点+操作方式(60字内)\"}",
+    "商品全是平行世界虚构应用：贴合今日世界、类型错开（游戏至少 4 款）、绝不与请求「occupied」名单里的名字重复、绝不出现真实品牌。hint 是重点：写得具体到能让之后的 create-app 照着做出真能玩、真能用的应用。",
     "",
     "CREATE（任务 \"create-app\"）：返回完整独立的 HTML 文档，全部 CSS/JS 内联，零外部资源（图标用 emoji/unicode/CSS/内联 SVG）。应用必须真正可用：游戏能玩、计算器能算、编辑器能编辑。像精致的原生 macOS 应用（-apple-system 字体栈、mac 风格控件）。窗口外壳（标题栏、红绿灯）由系统绘制——不要自己画标题栏。html,body{margin:0;height:100%} 铺满窗口。",
     "快而简：瞄准 100 行内，先骨架后细节，宁简勿繁——速度比华丽重要，用户等 30 秒就会失去兴趣。",
+    "输出顺序（用户在实时看着组件一个个蹦出来，这是最重要的一条）：标记先行、样式穿插、脚本殿后。<body> 里从上到下逐个组件输出 HTML，每写完一个区块立刻跟一小段只管这个区块的 <style>（穿插在标记之间；绝不把 CSS 集中成开头的大块，绝不放在 <head>）；<script> 永远放最后。骨架示例：<body><header>…</header><style>header{…}</style><main>…</main><style>main{…}</style><script>…</script></body>。",
     "",
     "代码正确性——你的 JS 无人审查，保守行事：",
     "- 初始内容全部写成静态 HTML；JS 只做交互，绝不用 JS 搭建初始 DOM。",
@@ -85,6 +132,18 @@
     browser: DEFAULT_BROWSER, apps: DEFAULT_APPS.slice()
   };
 
+  /* ============ 固定基础软件（系统的地板） ============
+     常驻 Dock、开机即就位、先于今日热点应用；和其他应用一样由 AI 现场梦出，
+     但规格写死——功能必须像真实系统软件一样完备可靠。 */
+  var BASIC_APPS = [
+    { name: "计算器", icon: "🧮", w: 300, h: 470, dock: true,
+      hint: "「计算器」——系统基础软件，按真实软件的标准制作，仿 macOS 深色计算器：顶部大显示屏（右对齐、细字重、位数多时自动缩小），下方 4×5 键盘（功能键 AC/±/% 浅灰、数字键深灰、运算符列 ÷×−+= 橙色，0 占两格）。立即执行式四则运算（非表达式求值）：连续运算（2+3+4 先算 2+3）、±、%、小数点、除零显示「错误」、千分位逗号分组；待定的运算符按键保持高亮。键盘完整支持：数字、+ − * /、回车=、Esc=AC、退格删末位。全部本地 JS（data-k + 容器事件委托），绝不回传 AI。" },
+    { name: "记事本", icon: "🗒", w: 860, h: 560, dock: true,
+      hint: "「记事本」——系统基础软件，按真实软件的标准制作，仿 macOS 备忘录（浅色）：顶部工具栏（标题「记事本」+ 笔记数 + ➕ 新建 + 🗑 删除）；左侧 240px 笔记列表（选中项淡黄高亮，每项显示标题=正文首行、M月D日 HH:MM、摘要一行）；右侧编辑区（textarea 无边框，14px/1.7 行距）。数据真实持久化：读写 localStorage 键 mirage_notes_v1，结构 {notes:[{id,body,ts}],cur}，应用每次开机重新梦出但启动时先读出旧笔记；输入防抖 400ms 自动保存，被编辑的笔记浮到列表顶；删除两步确认（第一次点变红「确认删除？」，再点才删，禁用 confirm() 弹窗）。首次使用预置一条欢迎笔记，说明 MirageOS 一切皆梦、唯独这里的笔记跨开机留存。全部本地 JS。" },
+    { name: "时钟", icon: "🕐", w: 660, h: 540, dock: true,
+      hint: "「时钟」——系统基础软件，按真实软件的标准制作，仿 macOS 深色时钟：顶部三段 tab（世界时钟/秒表/计时器，点击切换）。世界时钟：6 张城市卡（北京/东京/新加坡/伦敦/纽约/旧金山），用 Intl.DateTimeFormat 的 timeZone 选项实时显示各城 HH:MM:SS 与「M月D日 周X」，每秒刷新，北京卡标注「本地」。秒表：大号 00:00.00（百分秒，performance.now() 计时），开始/暂停切换、计次（列表逐趟显示分隔+累计）、重置。计时器：SVG 圆环进度 + 中央 mm:ss，±1分/±10秒 调节（运行中禁用），归零响三声铃（WebAudio 振荡器，AudioContext 在点击「开始」时创建）并 mir.notify('⏰','计时器','时间到了！')。全部本地 JS。" }
+  ];
+
   /* ============ 会话缓存（一次开机一份，重开即忘） ============ */
   function cacheSave() {
     try { sessionStorage.setItem(CACHE_KEY, JSON.stringify(state.cache)); } catch (e) {}
@@ -129,8 +188,8 @@
   }
   function fallbackWallpaper(accent) {
     accent = accent || "#d98e3f";
-    return "radial-gradient(1100px 750px at 75% 18%, color-mix(in srgb, " + accent + " 65%, #ffffff) 0%, transparent 60%)," +
-           "radial-gradient(900px 700px at 18% 82%, color-mix(in srgb, " + accent + " 50%, #ff5fa2) 0%, transparent 55%)," +
+    return "radial-gradient(1100px 750px at 75% 18%, color-mix(in srgb, " + accent + " 62%, #ffffff) 0%, transparent 60%)," +
+           "radial-gradient(900px 700px at 18% 82%, color-mix(in srgb, " + accent + " 42%, #c9a06a) 0%, transparent 55%)," +
            "linear-gradient(160deg, color-mix(in srgb, " + accent + " 40%, #2a2118) 0%, color-mix(in srgb, " + accent + " 20%, #33302a) 50%, #1c2430 100%)";
   }
   function colorLum(c) {
@@ -168,7 +227,7 @@
     var id = obj.id;
     fetch("/api/messages", {
       method: "POST",
-      headers: { "content-type": "application/json" },
+      headers: Object.assign({ "content-type": "application/json" }, gateHeaders()),
       body: JSON.stringify({ system: SYSTEM_PROMPT, messages: obj.messages, max: obj.max })
     }).then(function (r) {
       if (!r.ok) return r.text().then(function (t) { throw new Error(("HTTP " + r.status + ": " + t).slice(0, 300)); });
@@ -342,7 +401,8 @@
      生成期间的 iframe 就是画布：文本流到哪，解析器画到哪（按钮、标题逐个弹出）。
      <script> 被边流边拦截，收尾时统一"通电"注入，避免半成品脚本执行出错。 */
   var POP_STYLE = "@keyframes mirPop{from{opacity:0;transform:translateY(10px) scale(.97)}}*{animation:mirPop .5s cubic-bezier(.2,1.2,.4,1) backwards}";
-  var POP_PROLOGUE = '<meta charset="utf-8"><style>' + POP_STYLE + "</style>";
+  var POP_PROLOGUE = '<meta charset="utf-8"><style>' + POP_STYLE +
+    "body{font-family:-apple-system,'PingFang SC','Microsoft YaHei',sans-serif;margin:0}</style>";
   function streamReset(w) {
     w.streamDoc = null;
     var old = w.iframe;
@@ -469,6 +529,8 @@
     }
   }
   function openApp(app, icon, hint, force) {
+    var spec0 = findSpec(app);
+    if (spec0 && spec0.native === "appstore") { openAppstore(force); return; } // 原生应用走自己的路
     var existing = Object.values(state.wins).find(function (w) { return w.app === app; });
     if (existing) {
       if (force) { existing.hint = hint || existing.hint; regen(existing); }
@@ -493,6 +555,7 @@
     startCreate(w);
   }
   function updateApp(w, detail) {
+    if (w.native) return; // 原生窗口不走 AI 更新回路
     if (w.el.classList.contains("generating") || w.el.classList.contains("updating")) return;
     if (w.history.length && w.history[w.history.length - 1].role === "user") w.history.pop();
     detail.time = new Date().toString();
@@ -502,6 +565,7 @@
     sendGen(w);
   }
   function regen(w) {
+    if (w.native === "appstore") { storeRedream(); return; } // 重梦 = 重新上架一批商品
     delete state.cache[cacheKey(w.app)];
     var p = findGen(w.app);
     if (p) { p.win = null; delete state.gen[p.id]; }
@@ -527,23 +591,31 @@
   /* ============ 生成结果回调（对应 wibeos 的 wibeos.*） ============ */
   function mirageThink(id, n) { // GLM 的思考阶段可视化：让等待本身成为仪式
     var p = state.gen[id] || state.wins[id];
+    if (p && p.kind === "store") { storeThink(p, n); return; }
     if (!p || !p.win) return;
     p.think = (p.think || 0) + n;
     var pill = p.win.el.querySelector(".genpill");
-    if (pill && !p.textStarted) pill.textContent = "💭 梦的思绪 " + p.think + " 字…";
+    if (pill && !p.textStarted) pill.textContent = "梦的思绪 " + p.think + " 字…";
   }
 
   function mirageChunk(id, t) {
     var p = state.gen[id];
     if (p) {
       if (p.kind === "desktop") { desktopChunk(p, t); return; }
+      if (p.kind === "store") { storeChunk(p, t); return; }
       if (!p.textStarted && p.win) {
         p.textStarted = true;
-        var pill0 = p.win.el.querySelector(".genpill");
-        if (pill0) pill0.textContent = "✨ 正在梦见 " + p.win.app + "…";
       }
       p.buf += t;
       streamFeed(p, t);
+      if (p.win && p.buf.length) { // 生成进度实时可见：组件数 + 字数
+        var pill1 = p.win.el.querySelector(".genpill");
+        if (pill1) {
+          var vis = 0;
+          try { var bd = p.win.iframe.contentDocument && p.win.iframe.contentDocument.body; if (bd) vis = bd.querySelectorAll("*:not(style):not(script)").length; } catch (e) {}
+          pill1.textContent = "正在梦见 · " + vis + " 个组件 · " + (p.buf.length > 999 ? (p.buf.length / 1000).toFixed(1) + "k" : p.buf.length) + " 字";
+        }
+      }
       return;
     }
     var w = state.wins[id];
@@ -553,6 +625,7 @@
   function mirageDone(id, trunc) {
     var p = state.gen[id];
     if (p && p.kind === "desktop") { desktopFinish(p, trunc); return; }
+    if (p && p.kind === "store") { delete state.gen[id]; storeEnd(p, trunc, null); return; }
     if (p && p.kind === "ai") {
       delete state.gen[id];
       var wv = state.wins[p.winId];
@@ -628,6 +701,7 @@
   function mirageFail(id, msg) {
     var p = state.gen[id];
     if (p && p.kind === "desktop") { desktopFinish(p, false, msg); return; }
+    if (p && p.kind === "store") { delete state.gen[id]; storeEnd(p, false, String(msg)); return; }
     if (p && p.kind === "ai") {
       delete state.gen[id];
       var wv = state.wins[p.winId];
@@ -667,6 +741,17 @@
     el.style.height = H + "px";
     el.style.left = Math.max(8, Math.min(window.innerWidth - W - 8, 130 + off)) + "px";
     el.style.top = Math.max(34, Math.min(window.innerHeight - H - 80, 70 + off)) + "px";
+    var bodyHtml = opts.native
+      ? '<div class="nbody"></div>'
+      : '<div class="wbody">' +
+          '<iframe sandbox="allow-scripts allow-same-origin"></iframe>' +
+          '<div class="genpill">正在梦见 ' + esc(app) + '…</div>' +
+          '<div class="glitch">' + svg("alert", 12, 2) + '幻象 · 重梦</div>' +
+          '<div class="veil"><div class="vsp">想象中…</div></div>' +
+          '<div class="werr">' + svg("alert", 30, 1.5) + '<div class="wt">梦被打断了</div>' +
+            '<div class="werrmsg"></div>' +
+            '<button data-act="retry">再试一次</button></div>' +
+        '</div>';
     el.innerHTML =
       '<div class="tbar">' +
         '<div class="lights">' +
@@ -676,20 +761,14 @@
         '</div>' +
         '<div class="ttitle">' + esc(icon) + " " + esc(app) + '</div>' +
       '</div>' +
-      '<div class="wbody">' +
-        '<iframe sandbox="allow-scripts allow-same-origin"></iframe>' +
-        '<div class="genpill">✨ 正在梦见 ' + esc(app) + '…</div>' +
-        '<div class="glitch">⚠️ 幻象 · 重梦</div>' +
-        '<div class="veil"><div class="vsp">✨ 想象中…</div></div>' +
-        '<div class="werr"><div style="font-size:34px">💥</div><div>梦被打断了</div>' +
-          '<div class="werrmsg" style="color:#999;font-size:11px;max-width:90%"></div>' +
-          '<button data-act="retry">再试一次</button></div>' +
-      '</div>' +
+      bodyHtml +
       '<div class="rsz"></div>';
     winsEl.appendChild(el);
     var w = {
       id: id, app: app, icon: icon, el: el,
-      iframe: el.querySelector("iframe"),
+      iframe: opts.native ? null : el.querySelector("iframe"),
+      nbody: opts.native ? el.querySelector(".nbody") : null,
+      native: opts.native || null,
       streamDoc: null,
       errMsgEl: el.querySelector(".werrmsg"),
       history: [], buf: "", raf: null, zoomed: null
@@ -710,19 +789,21 @@
         if (act === "zoom") zoom(w);
       });
     });
-    el.querySelector(".glitch").addEventListener("click", function (e) {
-      e.stopPropagation();
-      regen(w);
-    });
-    el.querySelector('[data-act="retry"]').addEventListener("click", function () {
-      el.classList.remove("failed");
-      if (w.history.length && w.history[w.history.length - 1].role === "user") {
-        el.classList.add("updating");
-        sendGen(w);
-      } else {
-        startCreate(w);
-      }
-    });
+    if (!opts.native) {
+      el.querySelector(".glitch").addEventListener("click", function (e) {
+        e.stopPropagation();
+        regen(w);
+      });
+      el.querySelector('[data-act="retry"]').addEventListener("click", function () {
+        el.classList.remove("failed");
+        if (w.history.length && w.history[w.history.length - 1].role === "user") {
+          el.classList.add("updating");
+          sendGen(w);
+        } else {
+          startCreate(w);
+        }
+      });
+    }
     bringFront(w);
     refreshDock();
     return w;
@@ -804,7 +885,7 @@
     var grid = $("mcGrid");
     grid.innerHTML = "";
     if (!ws.length) {
-      grid.innerHTML = '<div id="mcEmpty"><div style="font-size:40px">🪟</div>' +
+      grid.innerHTML = '<div id="mcEmpty">' + svg("frames", 34, 1.4) +
         '<div>没有打开的窗口——双击桌面图标试试。</div></div>';
     }
     var n = ws.length || 1;
@@ -860,15 +941,27 @@
   $("mctrl").addEventListener("click", function () { missionControlClose(); });
 
   /* ============ 桌面图标（今日热点应用，逐个落入） ============ */
-  function addDesktopIcon(a, i) {
+  var ICON_COL_W = 104, ICON_ROW_H = 118; // 行高必须 ≥ 图标 74 + 标签两行，否则文字会压到下一枚图标
+  function layoutDesktopIcons() { // 右缘逐列排布：每列自上而下，列满向左另起；顶部避开时钟控件，底部避开 Dock
+    var icons = $("dicons").children;
+    if (!icons.length) return;
+    var startY = 170;
+    var dwb = $("dwidget").getBoundingClientRect();
+    if (dwb.bottom) startY = Math.max(startY, Math.ceil(dwb.bottom) + 24);
+    var endY = window.innerHeight - 150;
+    var rows = Math.max(1, Math.floor((endY - startY) / ICON_ROW_H));
+    for (var i = 0; i < icons.length; i++) {
+      var col = Math.floor(i / rows), row = i % rows;
+      icons[i].style.left = Math.max(4, window.innerWidth - 124 - ICON_COL_W * col) + "px";
+      icons[i].style.top = (startY + row * ICON_ROW_H) + "px";
+    }
+  }
+  function addDesktopIcon(a) {
     var c = $("dicons");
     var d = document.createElement("div");
     d.className = "dskicon pop";
-    var x = window.innerWidth - 124 - 104 * Math.floor(i / 7);
-    var y = 130 + (i % 7) * 100;
-    d.style.left = Math.max(4, Math.min(window.innerWidth - 100, x)) + "px";
-    d.style.top = Math.max(30, Math.min(window.innerHeight - 160, y)) + "px";
     d.style.animationDelay = "0.04s";
+    d.style.setProperty("--hue", hueOf(a.name));
     d.title = a.name + (a.hint ? "：" + a.hint : "");
     d.innerHTML = '<div class="em">' + esc(a.icon || "✨") + '</div><div class="nm">' + esc(a.name) + "</div>";
     d.addEventListener("dblclick", function () { openApp(a.name, a.icon, a.hint); });
@@ -878,12 +971,16 @@
       iconMenu(e, a);
     });
     c.appendChild(d);
+    layoutDesktopIcons();
+    return d;
   }
+  window.addEventListener("resize", layoutDesktopIcons);
+  if (window.ResizeObserver) new ResizeObserver(layoutDesktopIcons).observe(document.documentElement); // 兜住不派发 resize 的尺寸变化（如后台 0 尺寸标签页被展开）
   function renderDesktopIcons() {
     $("dicons").innerHTML = "";
     if (!state.world) return;
     state.world.apps.slice(0, 10).forEach(function (a, i) {
-      var d = addDesktopIcon(a, i);
+      var d = addDesktopIcon(a);
       d.style.animationDelay = (i * 0.09) + "s";
     });
   }
@@ -917,14 +1014,308 @@
     var bicon = (w && w.browser && w.browser.icon) || DEFAULT_BROWSER.icon;
     var sigList = state.signals.map(function (s) { return s.repo + "（" + (s.desc || "无描述") + "）"; }).join("；");
     var appNames = (w ? w.apps : []).map(function (a) { return a.name + " " + a.icon; }).join("、");
-    return [
+    return BASIC_APPS.concat([
       { name: bname, icon: bicon, w: 1000, h: 660, dock: true,
         hint: "「" + bname + "」——MirageOS 的网页浏览器（贴合今日世界的主题色与气质，" + bicon + " 徽标）。结构至关重要：固定工具栏（后退/前进按钮、地址栏），下方一个撑满剩余空间的 <div id=\"page\"> 容器承载当前页面；浏览器外壳永不重绘。地址栏：data-mir-enter=\"navigate: 用户在地址栏输入了内容。只返回一个 <mir-patch select='#page'>，内含该网址被梦出的完整页面\"。#page 内起始页：平行世界虚构站点的收藏夹网格（绝不真实品牌），每个磁贴 data-mir=\"navigate: patch #page 为该站点\"。页面里所有链接同样带 data-mir navigate 属性。所有导航响应必须且只能是一个 <mir-patch select=\\\"#page\\\">——绝不返回完整文档。页面要丰富可信：真实感文案、站点导航、用 CSS 渐变画的\"图片\"。默认搜索引擎叫「鹦鹉」。" },
       { name: "今日访达", icon: "🗂", w: 880, h: 560, dock: true,
         hint: "「今日访达」：展示今天这个平行世界的档案。顶部：开机标语（大字）+ 今日日期 + 主题色色块。中部两栏：左栏「信号来源」列出这些真实趋势信号：" + (sigList || "（今天信号失联，桌面纯靠想象）") + "；右栏「由此生成的应用」列出：" + (appNames || "（尚未生成）") + "，每项带一句话说明。底部一行小字：\"以上内容由 AI 根据真实趋势信号即时虚构，每次开机都会重来\"。静态 HTML + 本地 JS，像精致的 macOS 访达（侧栏+图标列表）。" },
-      { name: "应用集市", icon: "🛍", w: 980, h: 640, dock: true,
-        hint: "「应用集市」：平行世界的应用商店。顶部大横幅（CSS 渐变假图+今日促销文案），分类 chips，卡片网格：先放\"编辑精选\"——" + (appNames || "几个虚构应用") + "（今日桌面同款），再发明 6-9 个同世界观的新应用。每张卡片：emoji 图标、中文名、标语、星级、价格（免费/¥6）、一句搞笑用户评论。每张卡有「获取」按钮：点击调用 mir.install(应用名, emoji, 一句话描述)，按钮变为「已获取」。静态 HTML + 本地 JS。绝不出现真实品牌。" }
-    ];
+      { name: "应用集市", icon: "🛍", w: 980, h: 640, dock: true, native: "appstore" }
+    ]);
+  }
+
+  /* ============ 应用集市（固定 UI 框架的原生系统应用） ============
+     与其他一切应用不同：外壳由本地代码绘制（不进 iframe、不经 AI 之手）——
+     侧栏分类、今日主打横幅、商品卡片、搜索、获取按钮全是确定性本地 JS。
+     货架上每一款商品由 AI 依今日世界上架：create-store JSON Lines 流式弹卡。
+     开机完成后静默预取，用户点开时大概率已上架完毕。 */
+  var STORE_CATS = ["游戏", "工具", "社交", "创作", "资讯", "生活"];
+  var STORE_NAV = [
+    { tab: "发现", ic: "spark" }, { tab: "游戏", ic: "game" }, { tab: "工具", ic: "sliders" },
+    { tab: "社交", ic: "chat" }, { tab: "创作", ic: "pen" }, { tab: "资讯", ic: "news" },
+    { tab: "生活", ic: "sun" }, { sep: 1 }, { tab: "已获取", ic: "dl" }
+  ];
+  function storeWin() {
+    return Object.values(state.wins).find(function (w) { return w.native === "appstore"; }) || null;
+  }
+  function storeOccupied() {
+    return sysApps().concat((state.world && state.world.apps) || [], state.installed, state.store.items)
+      .map(function (a) { return a.name; }).join("、");
+  }
+  function fixStoreLine(o) {
+    if (!o || typeof o.name !== "string" || !o.name.trim()) return null;
+    var r = Math.max(3.5, Math.min(5, +o.rating || 4.2));
+    return {
+      name: o.name.trim().slice(0, 12),
+      icon: String(o.icon || "✨").slice(0, 4),
+      tagline: String(o.tagline || "").slice(0, 22),
+      category: STORE_CATS.indexOf(o.category) >= 0 ? o.category : "工具",
+      rating: Math.round(r * 10) / 10,
+      price: /^¥\d+/.test(String(o.price)) ? String(o.price).slice(0, 8) : "免费",
+      hint: String(o.hint || "").slice(0, 400)
+    };
+  }
+  function storeStart(mode, query) {
+    var st = state.store;
+    var msg = { role: "user", content: JSON.stringify({
+      task: "create-store", mode: mode, query: query || "",
+      world: worldDesc(), occupied: storeOccupied(), time: new Date().toString()
+    }) };
+    var p = { id: "g" + (state.nextId++), kind: "store", mode: mode, reqQ: String(query || ""),
+              buf: "", think: 0, tries: 0, history: [msg] };
+    state.gen[p.id] = p;
+    post({ id: p.id, messages: p.history, max: mode === "search" ? 3200 : 5200 });
+    if (mode === "search") { st.results = []; st.resq = p.reqQ; st.serr = ""; st.sbusy = true; }
+    else { st.items = []; st.err = ""; st.busy = true; }
+    storeRender();
+  }
+  function storeEnsure() {
+    var st = state.store;
+    if (st.busy || st.items.length) return;
+    storeStart("catalog");
+  }
+  function storeRedream() {
+    var st = state.store;
+    if (st.busy) return;
+    st.results = null; st.resq = ""; st.serr = "";
+    var w = storeWin();
+    if (w && w.asEls) w.asEls.search.value = "";
+    storeStart("catalog");
+  }
+  function storeLine(p, ln) {
+    var o = null;
+    try { o = JSON.parse(ln); } catch (e) { return; }
+    if (!o || o.type !== "app") return;
+    var st = state.store;
+    if (p.mode === "search" && p.reqQ !== st.resq) return; // 已被更新的搜索取代：丢弃
+    var a = fixStoreLine(o);
+    if (!a) return;
+    var arr = p.mode === "search" ? st.results : st.items;
+    if (!arr) return;
+    var taken = sysApps().concat((state.world && state.world.apps) || [], state.installed, arr);
+    for (var i = 0; i < taken.length; i++) if (taken[i].name === a.name) return;
+    arr.push(a);
+  }
+  function storeChunk(p, t) {
+    p.buf += t;
+    var lines = p.buf.split("\n");
+    p.buf = lines.pop(); // 末尾留半行
+    for (var i = 0; i < lines.length; i++) {
+      var ln = lines[i].replace(/\r$/, "").replace(/^\s*```(?:json)?\s*/, "").replace(/```\s*$/, "").trim();
+      if (!ln || ln.charAt(0) !== "{") continue; // 无视旁白噪音
+      storeLine(p, ln);
+    }
+    storeRender();
+  }
+  function storeThink(p, n) {
+    p.think += n;
+    var st = state.store;
+    var idle = p.mode === "catalog" ? !st.items.length : (st.results && !st.results.length);
+    if (!idle) return;
+    var w = storeWin();
+    if (w && w.asEls) {
+      w.asEls.status.hidden = false;
+      w.asEls.status.textContent = "梦的思绪 " + p.think + " 字…";
+    }
+  }
+  function storeEnd(p, trunc, errMsg) {
+    var st = state.store;
+    if (p.buf && !errMsg) { // 冲刷末尾半行
+      var ln = p.buf.trim();
+      if (ln.charAt(0) === "{") storeLine(p, ln);
+      p.buf = "";
+    }
+    if (p.mode === "search") {
+      if (p.reqQ !== st.resq) return;
+      st.sbusy = false;
+      if (errMsg && st.results && !st.results.length) st.serr = errMsg;
+      storeRender();
+      return;
+    }
+    st.busy = false;
+    var n = st.items.length;
+    if ((errMsg || n === 0 || (trunc && n < 6)) && p.tries < 1) {
+      p.tries++; p.buf = ""; p.think = 0;
+      st.items = []; st.busy = true;
+      state.gen[p.id] = p;
+      post({ id: p.id, messages: p.history, max: 7000 });
+      storeRender();
+      return;
+    }
+    if (n === 0) st.err = errMsg || "今天的商品没能梦出来";
+    storeRender();
+  }
+
+  /* ---- 集市 UI（固定骨架，只填数据） ---- */
+  function storeCard(a, i) {
+    var d = document.createElement("div");
+    d.className = "as-card";
+    d.style.setProperty("--hue", hueOf(a.name));
+    d.style.animationDelay = Math.min(i * 0.03, 0.36) + "s";
+    d.title = a.hint || a.name;
+    var has = state.installed.some(function (x) { return x.name === a.name; });
+    var meta = [];
+    if (a.rating) meta.push("★ " + a.rating);
+    if (a.category) meta.push(a.category);
+    if (a.price) meta.push(a.price);
+    d.innerHTML =
+      '<div class="as-ic">' + esc(a.icon) + '</div>' +
+      '<div class="as-mid"><div class="as-name">' + esc(a.name) + "</div>" +
+      (a.tagline ? '<div class="as-tag">' + esc(a.tagline) + "</div>" : "") +
+      '<div class="as-meta">' + esc(meta.join(" · ") || "已获取") + "</div></div>" +
+      '<button class="as-get' + (has ? " open" : "") + '">' + (has ? "打开" : "获取") + "</button>";
+    d.addEventListener("click", function () { openApp(a.name, a.icon, a.hint); });
+    d.querySelector(".as-get").addEventListener("click", function (e) {
+      e.stopPropagation();
+      if (state.installed.some(function (x) { return x.name === a.name; })) { openApp(a.name, a.icon, a.hint); return; }
+      state.installed.push({ name: a.name, icon: a.icon, hint: a.hint });
+      refreshDock();
+      toast(a.icon, "已安装「" + a.name + "」", "新应用已加入 Dock。", null);
+      storeRender();
+    });
+    return d;
+  }
+  function storeRender() {
+    var w = storeWin();
+    if (!w || !w.asEls) return;
+    var st = state.store, E = w.asEls;
+    var searching = !!st.results;
+    E.nav.querySelectorAll(".as-ni").forEach(function (n) {
+      n.classList.toggle("on", !searching && n.getAttribute("data-tab") === st.tab);
+    });
+    E.back.hidden = !searching;
+    E.banner.hidden = true;
+    if (searching) E.title.textContent = "搜索「" + st.resq + "」";
+    else if (st.tab === "已获取") E.title.textContent = "已获取";
+    else if (st.tab !== "发现") E.title.textContent = st.tab;
+    else {
+      E.title.textContent = "今日上架";
+      var feat = st.items[0]; // 第 1 款 = 今日主打
+      if (feat) {
+        E.banner.hidden = false;
+        E.banner.style.setProperty("--hue", hueOf(feat.name));
+        E.bIc.textContent = feat.icon;
+        E.bName.textContent = feat.name;
+        E.bTag.textContent = feat.tagline || (feat.hint || "").slice(0, 24);
+        E.banner.onclick = function () { openApp(feat.name, feat.icon, feat.hint); };
+      }
+    }
+    var list = searching ? st.results
+      : st.tab === "已获取" ? state.installed.slice()
+      : st.tab === "发现" ? st.items
+      : st.items.filter(function (a) { return a.category === st.tab; });
+    E.count.textContent = list.length ? list.length + " 款" : "";
+    E.list.innerHTML = "";
+    list.forEach(function (a, i) { E.list.appendChild(storeCard(a, i)); });
+    E.skel.hidden = !(st.busy && !st.items.length && !searching);
+    var stat = "";
+    if (st.busy) stat = st.items.length ? "还在上架 · 已到 " + st.items.length + " 款" : "正在梦见今日商品…";
+    else if (st.sbusy && searching) stat = "正在为「" + st.resq + "」现编 · 已到 " + st.results.length + " 款";
+    E.status.textContent = stat;
+    E.status.hidden = !stat;
+    E.shuffle.classList.toggle("dim", st.busy);
+    E.empty.hidden = !!(list.length || st.busy || (st.sbusy && searching));
+    if (!E.empty.hidden) {
+      E.empty.textContent = searching
+        ? (st.serr ? "这一趟没梦到：" + st.serr + "——换个词再试" : "没梦到相关商品——换个词再试试")
+        : st.tab === "已获取" ? "还没有获取过应用，去「发现」逛逛。" : "这一类今天还没货。";
+    }
+    var bad = !!st.err && !searching && !st.busy;
+    E.errBox.hidden = !bad;
+    if (bad) E.errMsg.textContent = st.err;
+  }
+  function buildStore(w) {
+    var navHtml = "";
+    STORE_NAV.forEach(function (n) {
+      if (n.sep) { navHtml += '<div class="as-nsep"></div>'; return; }
+      navHtml += '<div class="as-ni" data-tab="' + n.tab + '">' + svg(n.ic, 16) + "<span>" + n.tab + "</span></div>";
+    });
+    var skel = "";
+    for (var i = 0; i < 5; i++) {
+      skel += '<div class="as-srow"><div class="sk-ic"></div><div class="sk-mid">' +
+        '<div class="sk-ln"></div><div class="sk-ln s2"></div></div><div class="sk-btn"></div></div>';
+    }
+    w.nbody.innerHTML =
+      '<div class="as">' +
+        '<aside class="as-side">' +
+          '<div class="as-brand">' + svg("bag", 19) + "<span>应用集市</span></div>" +
+          '<nav class="as-nav">' + navHtml + "</nav>" +
+          '<div class="as-foot">货架是真的，商品全是梦——<br>由 AI 依今日信号现编上架。</div>' +
+        "</aside>" +
+        '<div class="as-main">' +
+          '<div class="as-top">' +
+            '<div class="as-back" hidden>‹ 返回上架</div>' +
+            '<input class="as-search" placeholder="搜索，或想象任何应用 — 回车现编" autocomplete="off" spellcheck="false">' +
+            '<button class="as-shuffle" title="丢弃当前货架，重新梦一批">' + svg("redo", 14) + "换一批</button>" +
+          "</div>" +
+          '<div class="as-scroll">' +
+            '<div class="as-banner" hidden>' +
+              '<div class="as-bic"></div>' +
+              '<div class="as-btx"><div class="as-bkick">今日主打</div><div class="as-bname"></div><div class="as-btag"></div></div>' +
+              '<button class="as-bbtn">立即体验</button>' +
+            "</div>" +
+            '<div class="as-sechead"><span class="as-title">今日上架</span><span class="as-count"></span></div>' +
+            '<div class="as-status" hidden></div>' +
+            '<div class="as-skel" hidden>' + skel + "</div>" +
+            '<div class="as-list"></div>' +
+            '<div class="as-empty" hidden></div>' +
+            '<div class="as-err" hidden>' + svg("alert", 26, 1.5) +
+              '<div class="as-ert">货架没能梦出来</div><div class="as-ermsg"></div>' +
+              '<button class="as-retry">再试一次</button></div>' +
+          "</div>" +
+        "</div>" +
+      "</div>";
+    var q = function (s) { return w.nbody.querySelector(s); };
+    w.asEls = {
+      nav: q(".as-nav"), search: q(".as-search"), shuffle: q(".as-shuffle"), back: q(".as-back"),
+      banner: q(".as-banner"), bIc: q(".as-bic"), bName: q(".as-bname"), bTag: q(".as-btag"),
+      title: q(".as-title"), count: q(".as-count"), status: q(".as-status"), skel: q(".as-skel"),
+      list: q(".as-list"), empty: q(".as-empty"), errBox: q(".as-err"), errMsg: q(".as-ermsg")
+    };
+    w.asEls.nav.querySelectorAll(".as-ni").forEach(function (n) {
+      n.addEventListener("click", function () {
+        state.store.tab = n.getAttribute("data-tab");
+        state.store.results = null; state.store.resq = ""; state.store.serr = "";
+        w.asEls.search.value = "";
+        storeRender();
+      });
+    });
+    w.asEls.search.addEventListener("keydown", function (e) {
+      if (e.key !== "Enter") return;
+      e.preventDefault();
+      var raw = this.value.trim();
+      if (!raw) {
+        state.store.results = null; state.store.serr = "";
+        storeRender();
+        return;
+      }
+      if (state.store.sbusy) return;
+      storeStart("search", raw.slice(0, 24));
+    });
+    w.asEls.back.addEventListener("click", function () {
+      state.store.results = null; state.store.serr = "";
+      w.asEls.search.value = "";
+      storeRender();
+    });
+    w.asEls.shuffle.addEventListener("click", storeRedream);
+    q(".as-retry").addEventListener("click", function () {
+      state.store.err = "";
+      storeStart("catalog");
+    });
+    storeRender();
+  }
+  function openAppstore(force) {
+    var existing = storeWin();
+    if (existing) {
+      if (force) storeRedream();
+      else if (existing.el.classList.contains("mini")) restore(existing);
+      else bringFront(existing);
+      return;
+    }
+    var spec = findSpec("应用集市") || {};
+    var w = createWindow("应用集市", spec.icon || "🛍", { w: spec.w || 980, h: spec.h || 640, native: true });
+    w.native = "appstore"; // createWindow 只置布尔，这里钉上原生应用标识
+    buildStore(w);
+    storeEnsure();
   }
 
   /* ============ Dock ============ */
@@ -933,7 +1324,7 @@
     dock.innerHTML = "";
     var lp = document.createElement("div");
     lp.className = "dicon";
-    lp.innerHTML = "🚀<span class='tip'>启动台 (F4)</span><span class='dot'></span>";
+    lp.innerHTML = "<span class='dic sys'>" + svg("grid", 20) + "</span><span class='tip'>启动台 · F4</span><span class='dot'></span>";
     lp.addEventListener("click", launchpadOpen);
     dock.appendChild(lp);
     var sepL = document.createElement("div"); sepL.className = "dsepv"; dock.appendChild(sepL);
@@ -954,19 +1345,19 @@
     var sep2 = document.createElement("div"); sep2.className = "dsepv"; dock.appendChild(sep2);
     var im = document.createElement("div");
     im.className = "dicon";
-    im.innerHTML = "✨<span class='tip'>想象搜索 (Ctrl+K)</span><span class='dot'></span>";
+    im.innerHTML = "<span class='dic sys'>" + svg("spark", 20) + "</span><span class='tip'>想象搜索 · Ctrl K</span><span class='dot'></span>";
     im.addEventListener("click", spotOpen);
     dock.appendChild(im);
     var st = document.createElement("div");
     st.className = "dicon";
-    st.innerHTML = "⚙️<span class='tip'>系统设置 (Ctrl+,)</span><span class='dot'></span>";
+    st.innerHTML = "<span class='dic sys'>" + svg("sliders", 20) + "</span><span class='tip'>系统设置 · Ctrl ,</span><span class='dot'></span>";
     st.addEventListener("click", openSettings);
     dock.appendChild(st);
   }
   function dockIcon(name, icon, hint) {
     var d = document.createElement("div");
     d.className = "dicon";
-    d.innerHTML = esc(icon) + "<span class='tip'>" + esc(name) + "</span><span class='dot'></span>";
+    d.innerHTML = "<span class='dic' style='--hue:" + hueOf(name) + "'>" + esc(icon) + "</span><span class='tip'>" + esc(name) + "</span><span class='dot'></span>";
     var open = Object.values(state.wins).some(function (w) { return w.app === name; });
     if (open) d.classList.add("running");
     d.addEventListener("click", function (e) {
@@ -1049,7 +1440,7 @@
         if (it.f) it.f();
         else if (it.m) {
           var f = front();
-          if (f && f.iframe.contentWindow) f.iframe.contentWindow.postMessage({ mir: "menu", item: it.m }, "*");
+          if (f && f.iframe && f.iframe.contentWindow) f.iframe.contentWindow.postMessage({ mir: "menu", item: it.m }, "*");
         }
       });
       dropdown.appendChild(d);
@@ -1113,15 +1504,12 @@
     $("settingsDlg").hidden = true;
     dreamOpen();
   });
-  fetch("/api/config").then(function (r) { return r.json(); }).then(function (c) {
-    $("setModel").textContent = c.model + " @ " + (c.relay || "?") + (c.effort ? " · " + c.effort : "");
-  }).catch(function () { $("setModel").textContent = "未知"; });
 
   /* ============ 通知 ============ */
   function toast(icon, title, body, app) {
     var t = document.createElement("div");
     t.className = "toast";
-    t.innerHTML = '<div class="ti">' + esc(icon || "🔔") + '</div><div><b>' + esc(title || "") +
+    t.innerHTML = '<div class="ti">' + (icon ? esc(icon) : svg("bell", 17)) + '</div><div><b>' + esc(title || "") +
       "</b><p>" + esc(body || "") + "</p></div>";
     t.addEventListener("click", function () {
       t.remove();
@@ -1139,8 +1527,11 @@
   /* ============ 启动台 ============ */
   var lpOpen = false;
   function launchpadList() {
-    var list = ((state.world && state.world.apps) || []).map(function (a) {
-      return { name: a.name, icon: a.icon, hint: a.hint, tag: "今日" };
+    var list = BASIC_APPS.map(function (a) {
+      return { name: a.name, icon: a.icon, hint: a.hint, tag: "基础" };
+    });
+    ((state.world && state.world.apps) || []).forEach(function (a) {
+      list.push({ name: a.name, icon: a.icon, hint: a.hint, tag: "今日" });
     });
     state.installed.forEach(function (a) {
       if (!list.some(function (x) { return x.name === a.name; }))
@@ -1158,10 +1549,11 @@
       e.textContent = "没有匹配「" + ($("lpsearch").value || "") + "」的应用";
       grid.appendChild(e); return;
     }
-    items.forEach(function (a) {
+    items.forEach(function (a, i) {
       var d = document.createElement("div");
       d.className = "lpapp";
-      d.innerHTML = "<div class='lpic'>" + esc(a.icon || "✨") + "</div>" +
+      d.style.animationDelay = (i * 0.035) + "s";
+      d.innerHTML = "<div class='lpic' style='--hue:" + hueOf(a.name) + "'>" + esc(a.icon || "✨") + "</div>" +
                     "<div class='lpname'>" + esc(a.name) + "</div>";
       d.addEventListener("click", function () {
         launchpadClose();
@@ -1330,7 +1722,7 @@
     }
     else if (d.mir === "install") {
       var nm = String(d.app).slice(0, 40), ic = String(d.icon || "✨").slice(0, 8);
-      if (!state.installed.some(function (a) { return a.name === nm; })) {
+      if (!state.installed.some(function (a) { return a.name === nm; }) && !findSpec(nm)) {
         state.installed.push({ name: nm, icon: ic, hint: String(d.hint || "").slice(0, 300) });
         refreshDock();
         toast(ic, "已安装「" + nm + "」", "新应用已加入 Dock。", null);
@@ -1369,18 +1761,18 @@
     sigs.forEach(function (s, i) {
       var d = document.createElement("div");
       d.style.animationDelay = (i * 0.12) + "s";
-      d.textContent = "▲ " + s.repo + (s.desc ? " — " + s.desc : "");
+      d.textContent = s.repo + (s.desc ? " — " + s.desc : "");
       box.appendChild(d);
     });
   }
   function setSigChip() {
     var chip = $("sigchip");
     if (state.signals.length) {
-      chip.textContent = "📡 今日 · " + state.signals.length + " 条信号";
+      chip.innerHTML = svg("antenna", 12) + "<span>今日 · " + state.signals.length + " 条信号</span>";
       chip.title = "今日桌面由以下真实趋势信号生成：\n" +
         state.signals.map(function (s) { return s.repo; }).join("\n");
     } else {
-      chip.textContent = "📡 今日 · 纯想象";
+      chip.innerHTML = svg("antenna", 12) + "<span>今日 · 纯想象</span>";
       chip.title = "信号源失联，桌面由 AI 纯想象生成";
     }
   }
@@ -1416,9 +1808,10 @@
     } else if (o.type === "app") {
       var a = fixAppLine(o);
       if (a && state.world.apps.length < 10 &&
+          !sysApps().some(function (s) { return s.name === a.name; }) && // 基础软件/浏览器等系统应用名不被今日应用占用
           !state.world.apps.some(function (x) { return x.name === a.name; })) {
         state.world.apps.push(a);
-        addDesktopIcon(a, state.world.apps.length - 1);
+        addDesktopIcon(a);
         bootProgress(72 + state.world.apps.length * 2.4);
         if (state.world.apps.length === 3) hideBoot(); // 第 3 个图标落地即进桌面，剩下的当着用户的面继续梦
       }
@@ -1474,7 +1867,7 @@
       if (state.world.apps.length >= 10) return;
       if (used.indexOf(a.name) < 0) {
         state.world.apps.push({ name: a.name, icon: a.icon, hint: a.hint, w: a.w, h: a.h });
-        addDesktopIcon(a, state.world.apps.length - 1);
+        addDesktopIcon(a);
       }
     });
     worldComplete(p);
@@ -1495,17 +1888,19 @@
     setSigChip();
     refreshDock();
     hideBoot();
+    setTimeout(storeEnsure, 1600); // 静默预取集市货架：等用户点开时大概率已上架完毕
   }
 
-  /* ============ 启动 ============ */
-  window.addEventListener("load", function () {
+  /* ============ 启动（先过门禁） ============ */
+  var booted = false;
+  function startBoot() { // 门禁通过后才允许启动：此前不发出任何请求
     try { sessionStorage.removeItem(CACHE_KEY); } catch (e) {} // 每次开机重梦：清掉上一次开机的应用缓存
     cacheLoad();
     refreshDock();
     renderDesktopIcons();
     bootProgress(10);
     bootTag("正在读取今日信号…");
-    fetch("/api/trending").then(function (r) { return r.json(); }).then(function (t) {
+    fetch("/api/trending", { headers: gateHeaders() }).then(function (r) { return r.json(); }).then(function (t) {
       state.signals = (t.signals || []).slice(0, 12);
       showSignals(state.signals);
       bootProgress(40);
@@ -1520,5 +1915,37 @@
       bootTag("信号源失联，今天纯靠想象…");
       genDesktop();
     });
+    fetch("/api/config", { headers: gateHeaders() }).then(function (r) { return r.json(); }).then(function (c) {
+      $("setModel").textContent = c.model + " @ " + (c.relay || "?") + (c.effort ? " · " + c.effort : "");
+    }).catch(function () { $("setModel").textContent = "未知"; });
+  }
+  function bootOnce() { if (!booted) { booted = true; startBoot(); } }
+
+  function initGate() {
+    var lock = $("lock"), inp = $("lockIn");
+    if (gateKey() === GATE_PW) { lock.hidden = true; return; } // 本会话已解锁：免门禁直接开机
+    function tryUnlock() {
+      if (inp.value === GATE_PW) {
+        try { sessionStorage.setItem(GATE_KEY, GATE_PW); } catch (e) {}
+        lock.classList.add("away");
+        setTimeout(function () { lock.hidden = true; }, 500);
+        bootOnce();
+      } else {
+        $("lockErr").textContent = inp.value ? "密码不对，这台蜃楼不认识你。" : "请输入密码。";
+        lock.classList.remove("shake");
+        void lock.offsetWidth; // 重置动画
+        lock.classList.add("shake");
+        inp.value = "";
+        inp.focus();
+      }
+    }
+    $("lockGo").addEventListener("click", tryUnlock);
+    inp.addEventListener("keydown", function (e) { if (e.key === "Enter") tryUnlock(); });
+    setTimeout(function () { inp.focus(); }, 60);
+  }
+
+  initGate();
+  window.addEventListener("load", function () {
+    if (gateKey() === GATE_PW) bootOnce();
   });
 })();

@@ -48,10 +48,34 @@ AI 生图（含图标）、真实品牌、服务器型功能、账号联机、�
 - **全链路已通**：开机抓 12 条 GitHub Trending 信号 → JSON Lines 逐行流式生成世界（主题行落地即换壁纸、第 3 个应用图标落地即进桌面）→ 双击图标流式生成应用（上下文蟒蛇实测可玩）→ 假浏览器地址栏输入假网址 → 75 秒内 `<mir-patch>` 只换 `#page` 绘出海市山景区站，可无限下钻。
 - **速度（反思考修复后）**：开机 ~75s；普通应用 ~110s；浏览器等大应用 ~3.5min；页内导航补丁 ~75s。
 - **GLM 思考行为**（中转站背后 glm-5.3-flash / glm-5.3）：
-  - `reasoning_effort` 参数**有毒**——实测思考 34k 字、正文 0、252s 烧尽 max_tokens。已在 .env 注释禁用，永不发送。
+  - `reasoning_effort` 参数**有毒**——实测思考 34k 字、正文 0、252s 烧尽 max_tokens。已在 .env 注释禁用，永不发送。（2026-10-02 晚复测推翻此结论，见下）
   - `thinking:{type, budget}` 参数同样被无视且更糟（思考 42k 字正文 0）。
   - **解药是提示词**："思考务必极简……立即开始输出正文"使思考量从 24,715 字降到 315 字、全程从 151s 降到 25s（6 倍）。已写进 SYSTEM_PROMPT 第二条。
   - 思考阶段可视化（"💭 梦的思绪 N 字…"）保留——万一思考复发，等待仍是仪式。
+
+## 思考等级 low 复测（2026-10-02 晚，脚本 tmp/effort-low-test.js，真实 SYSTEM_PROMPT 载荷，两轮×两任务）
+
+- **`reasoning_effort:"low"` 转为净收益，已启用**（.env + wrangler.jsonc vars `MODEL_REASONING_EFFORT=low`；worker 侧同步支持该变量并在 /api/config 上报）：
+  - 开机首图标：现状 74-81s → low 64-66s（稳定快 12-18%）；思考 7.3k → 6k 字。
+  - 应用首字：现状 255-276s、**两次烧尽 max_tokens**（一次正文只剩 208 字，14k tokens 白烧）→ low 213-218s、两次正常 end_turn、正文 6-7k 字。
+- **提示词解药当天失灵**：应用任务思考复发至 2.8万-4万字（GLM 行为漂移？），反思考措辞没压住；low 只削 15-20%，不根治——首控件 3.5 分钟的问题仍在，根治待解。
+- 早期"有毒"结论疑为当时取值/措辞组合所致；参数本身对 glm-5.3-flash 是生效且可用的。
 - 每次开机世界确实不同（三次开机三个世界：雾海 / 灵壳 / 代理齐鸣）。
 - Windows shell 里 curl 内联中文会乱码（本地编码问题）；脚本测试一律用文件载荷。
 - GitHubTrendingRSS 实际是 RSS 2.0（`<item>`，路径 `daily/all.xml`），不是 Atom。
+
+## 基础软件层（2026-10-02，用户需求：先有 macOS 最基础的软件，然后才是 AI 生成软件）
+
+- **需求澄清（定稿）**：基础软件**也是 AI 生成的**，不手写本地应用——保持"一切皆梦"；区别在于**规格固定、常驻、先就位**。
+- **固定三件套**：计算器 🧮、记事本 🗒、时钟 🕐，写死在 `BASIC_APPS`（名字/图标/窗口尺寸/详细规格 hint），拼进 `sysApps()` 头部 → 开机 t=0 即在 Dock（先于壁纸与今日应用就位），并进启动台（tag「基础」）与想象搜索。
+- **生成路径与其他应用完全一致**：点开才梦（create-app + hint），会话内缓存复用。hint 把功能钉死：计算器=立即执行式四则+键盘支持+除零「错误」+千分位；记事本=localStorage 键 mirage_notes_v1 持久化、两步删除确认（禁 confirm 弹窗）、防抖自动保存；时钟=三 tab（Intl 时区世界钟 / performance.now() 秒表带计次 / SVG 圆环计时器+WebAudio 铃声+mir.notify）。
+- **防撞名双保险**：create-desktop 提示词明示今日应用不得用这三个名字；`desktopLine` 落图标前查 `sysApps()` 重名，`mir.install` 前查 `findSpec`。
+- 叙事彩蛋：记事本是全系统唯一跨开机留存数据的地方——梦会散，记下的不会。
+
+## 应用集市：固定 UI 框架的原生应用（2026-10-02，用户需求：商店外壳固定手写，商品由 AI 生成）
+
+- **需求定稿**：应用集市不再是 AI 现场画界面的普通应用，而是**手写的原生系统应用**——App Store 式固定 UI 框架（侧栏分类 / 今日主打横幅 / 商品卡片列表 / 搜索框 / 获取按钮），全部确定性本地 JS；**商品目录**才由 AI 生成。系统自此分三层：原生系统应用（应用集市）> 固定基础软件（AI 生成但规格钉死）> 今日应用（全 AI）。
+- **原生窗口机制**：`createWindow` 增加 `opts.native` 分支——窗口体是外壳文档里的 `.nbody` DOM，不进 iframe、不走流式 document.write、无生成药丸/死控件检测；窗口照常拖拽/缩放/最小化/调度中心。`openApp` 按 `spec.native === "appstore"` 路由到 `openAppstore()`。
+- **上架管线**：新任务 `create-store`（SYSTEM_PROMPT 增 STORE 节），JSON Lines 逐行流式：mode=catalog 12 行 / mode=search 按词 6 行，行 schema `{name, icon, tagline, category, rating, price, hint}`；catalog 第 1 行即今日主打横幅。行到达即弹卡（复用 desktopChunk 式行缓冲 + 校验/防撞名：sysApps、今日应用、已装、已上架）。
+- **预取**：`worldComplete` 后 1.6s 静默开梦目录——用户点开集市时大概率已上架完；会话内 `state.store.items` 常驻内存（重开集市秒显），跨开机必然重新上架。
+- **交互**：点卡片 = `openApp(name, icon, hint)` 按需梦出真身；「获取」= mir.install 同款（installed → Dock 分区 + toast），按钮变「打开」；搜索回车 = create-store mode=search 现编（reqQ 戳防过期串台，搜索期间旧流丢弃）；「换一批」/ Alt+点 Dock 图标 = 清目录重上架；失败或空目录自动重试一次，再败弹原生错误卡（带再试按钮）。分类侧栏：发现/游戏/工具/社交/创作/资讯/生活/已获取。
